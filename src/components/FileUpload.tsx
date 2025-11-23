@@ -75,10 +75,10 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
           dragActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 bg-gray-50'
+            ? 'border-indigo-500 dark:border-indigo-400 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 shadow-2xl shadow-indigo-500/20 dark:shadow-indigo-500/10 scale-[1.02]'
+            : 'border-indigo-300 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl'
         } ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
       >
         <input
@@ -90,10 +90,10 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
           disabled={isLoading}
         />
         
-        <div className="space-y-4">
-          <div className="text-gray-600">
+        <div className="space-y-6">
+          <div className="text-indigo-600 dark:text-indigo-400">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className={`mx-auto h-16 w-16 transition-all duration-300 ${dragActive ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-indigo-400 dark:text-indigo-500'}`}
               stroke="currentColor"
               fill="none"
               viewBox="0 0 48 48"
@@ -108,47 +108,49 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
           </div>
           
           <div>
-            <p className="text-lg font-medium text-gray-700">
+            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mb-2">
               Drag and drop your file here, or
             </p>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="mt-2 text-blue-600 hover:text-blue-700 font-medium underline"
+              className="mt-2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
             >
               browse to upload
             </button>
           </div>
           
-          <p className="text-sm text-gray-500">
+          <p className="text-sm font-medium text-indigo-500 dark:text-indigo-400">
             Supports PDF, images (JPG, PNG, GIF), and text files
           </p>
         </div>
       </div>
 
       {selectedFile && (
-        <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
+        <div className="mt-6 p-5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-indigo-200 dark:border-gray-700 rounded-2xl shadow-lg animate-in slide-in-from-top-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <svg
-                className="h-8 w-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <svg
+                  className="h-6 w-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">
                   {selectedFile.name}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-medium text-indigo-500 dark:text-indigo-400 mt-1">
                   {formatFileSize(selectedFile.size)}
                 </p>
               </div>
@@ -160,7 +162,7 @@ export default function FileUpload({ onFileSelect, isLoading }: FileUploadProps)
                   fileInputRef.current.value = '';
                 }
               }}
-              className="text-red-600 hover:text-red-700 text-sm font-medium"
+              className="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg text-sm font-semibold transition-colors duration-200"
             >
               Remove
             </button>
