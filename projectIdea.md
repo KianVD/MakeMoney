@@ -1,0 +1,1 @@
+Build a Typescript + Tailwind + React.js website for a study website that allows users to type in text with their material they need to study, and sends this to gemini to create a study guide of the topics within this, then send this generated study guide to google nano bannana 3 and generate multiple inforgraphic images based on this study guide 

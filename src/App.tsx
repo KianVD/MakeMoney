@@ -131,10 +131,10 @@ function App() {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h1 className="text-4xl font-bold gradient-text dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-indigo-400 dark:to-purple-400 mb-3">
-                Academic Study Guide Generator
+                VizuLearn
               </h1>
               <p className="text-lg text-indigo-700/80 dark:text-indigo-300/80 font-medium">
-                Transform your documents into clean study tools, reminders, and tutoring-style guides
+                Transform your documents into visual study guides and infographics
               </p>
             </div>
             <button
