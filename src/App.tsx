@@ -3,8 +3,9 @@ import TextInput from './components/TextInput';
 import FileUpload from './components/FileUpload';
 import StudyGuideDisplay from './components/StudyGuideDisplay';
 import JsonPreview from './components/JsonPreview';
+import InfographicDisplay from './components/InfographicDisplay';
 import { StudyGuide } from './types/studyGuide';
-import { generateStudyGuide } from './services/geminiService';
+import { createInfographic } from './services/falAiService';
 
 type InputMode = 'text' | 'file';
 
@@ -14,6 +15,7 @@ function App() {
   const [studyGuide, setStudyGuide] = useState<StudyGuide | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
+  const [infographicUrl, setInfographicUrl] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check localStorage on initial load
     if (typeof window !== 'undefined') {
@@ -74,8 +76,9 @@ function App() {
     setInputText(text);
 
     try {
-      const result = await generateStudyGuide(text);
-      setStudyGuide(result);
+      const { studyGuide, infographicUrl } = await createInfographic(text);
+      setStudyGuide(studyGuide);
+      setInfographicUrl(infographicUrl);
     } catch (err) {
       setError(
         err instanceof Error
@@ -93,17 +96,26 @@ function App() {
     setInputText(`Processing file: ${file.name}`);
 
     try {
-      // For now, we'll read text files directly
-      // For PDFs and images, you would need additional processing
+      // Handle different file types
       if (file.type === 'text/plain') {
+        // Read text files as string
         const text = await file.text();
-        const result = await generateStudyGuide(text);
-        setStudyGuide(result);
-      } else {
-        // For PDFs and images, you would need to extract text first
-        // This is a placeholder - in production, you'd use a library like pdf.js or OCR
+        const { studyGuide, infographicUrl } = await createInfographic(text);
+        setStudyGuide(studyGuide);
+        setInfographicUrl(infographicUrl);
+      } else if (file.type.startsWith('image/')) {
+        // Pass image files directly to fal.ai
+        const { studyGuide, infographicUrl } = await createInfographic(file);
+        setStudyGuide(studyGuide);
+        setInfographicUrl(infographicUrl);
+      } else if (file.type === 'application/pdf') {
+        // PDF support - would need pdf.js or similar
         throw new Error(
-          'File type not yet supported. Please use text input or upload a .txt file. PDF and image processing coming soon!'
+          'PDF processing coming soon! For now, please use text input or upload images (JPG, PNG, GIF).'
+        );
+      } else {
+        throw new Error(
+          'File type not supported. Please upload a text file or image (JPG, PNG, GIF).'
         );
       }
     } catch (err) {
@@ -121,6 +133,7 @@ function App() {
     setStudyGuide(null);
     setError(null);
     setInputText('');
+    setInfographicUrl(null);
   };
 
   return (
@@ -271,6 +284,7 @@ function App() {
             </div>
 
             <div className="space-y-8">
+              {infographicUrl && <InfographicDisplay imageUrl={infographicUrl} />}
               <StudyGuideDisplay studyGuide={studyGuide} />
               <JsonPreview studyGuide={studyGuide} />
             </div>
