@@ -11,12 +11,13 @@ Academic Study Guide Generator - A React + TypeScript web application that trans
 ### Application Flow
 
 1. User provides input via text or file upload (supports text files and images)
-2. Content is sent to fal.ai's LLM with specialized infographic prompt (`src/services/falAiService.ts`)
-   - Text input/files: Sent as string content to Llama 3.2 90B Vision model
-   - Image files: Uploaded to fal.ai storage, then URL sent to Llama 3.2 90B Vision model for visual analysis
-3. fal.ai LLM extracts key concepts and generates structured JSON with detailed infographic prompt
-4. The infographic prompt is sent to fal.ai's Nano Banana Pro model for image generation
-5. App displays generated infographic, formatted study guide, and raw JSON preview
+2. Content is routed to the appropriate fal.ai workflow (`src/services/falAiService.ts`):
+   - **Text input/files**: Processed through `workflows/DarenShamoun/text-mm` workflow
+   - **Image files**: Uploaded to fal.ai storage first, then URL sent to `workflows/DarenShamoun/teammm` workflow
+3. Workflow processes content and generates both:
+   - Study guide data (title, sections, bullet points, tips)
+   - Infographic image URL
+4. App displays generated infographic, formatted study guide, and raw JSON preview
 
 ### Key Components Structure
 - `src/App.tsx` - Main application with input mode switching (text/file), state management, dark mode, and layout
@@ -35,13 +36,19 @@ Academic Study Guide Generator - A React + TypeScript web application that trans
 
 **fal.ai Service (`src/services/falAiService.ts`)**
 - `uploadImageToFal(file)` - Uploads image files to fal.ai storage and returns URL
-- `processContentWithLLM(content)` - Sends content to fal.ai's vision-capable LLM (Llama 3.2 90B Vision) with specialized prompt for infographic generation
-- Returns structured JSON with key concepts, visual style, and detailed infographic prompt
-- `generateInfographic(prompt)` - Calls fal.ai's Nano Banana Pro model to generate infographic image
-- Uses landscape 16:9 aspect ratio for infographics
-- `createInfographic(content)` - Orchestrates the full pipeline: fal.ai LLM → fal.ai image generation → StudyGuide format conversion
-- Handles JSON parsing with markdown code block cleanup
-- Converts LLM response format into app's StudyGuide interface
+- `processTextWorkflow(text)` - Streams text through `workflows/DarenShamoun/text-mm` workflow
+- `processImageWorkflow(imageUrl)` - Streams image URL through `workflows/DarenShamoun/teammm` workflow
+- `createInfographic(content)` - Main orchestration function that:
+  - Routes to text or image workflow based on content type
+  - Uploads images to fal.ai storage when needed
+  - Streams workflow events and logs progress
+  - Extracts study guide data and infographic URL from workflow result
+  - Converts workflow output to app's StudyGuide interface format
+
+**Workflow Integration:**
+- Uses `fal.stream()` API for real-time progress updates
+- Workflows are custom-built on fal.ai platform
+- Each workflow handles the complete pipeline (LLM processing + image generation)
 
 **Note:** The old `src/services/geminiService.ts` is no longer used and can be removed.
 
@@ -77,7 +84,8 @@ npm run preview
 - Vite for bundling and dev server
 - Tailwind CSS for styling (with dark mode support)
 - ESLint for linting
-- @fal-ai/serverless-client for both LLM processing and AI image generation
+- @fal-ai/client for workflow streaming API
+- @fal-ai/serverless-client for storage API
 
 ## Important Constraints
 
@@ -102,10 +110,11 @@ npm run preview
 ## Testing & Validation
 
 When modifying services or study guide generation:
-1. **fal.ai Service Testing:**
-   - Verify fal.ai LLM returns structured JSON with all required fields
-   - Check that `infographic_prompt` is detailed and descriptive
-   - Ensure fal.ai generates valid image URLs
+1. **Workflow Testing:**
+   - Test text workflow with sample educational content
+   - Test image workflow with educational images (diagrams, notes, etc.)
+   - Verify both workflows return infographic URL and study guide data
+   - Check console logs for streaming events
 
 2. **Study Guide Generation:**
    - Verify JSON output matches StudyGuide interface exactly
@@ -114,12 +123,20 @@ When modifying services or study guide generation:
 
 3. **Error Handling:**
    - Test behavior with missing API keys
+   - Test with invalid image formats
    - Check error messages are user-friendly
 
-## LLM System Prompt
+## Workflow Output Format
 
-The system prompt in `src/services/falAiService.ts` guides fal.ai's LLM to extract educational content and format it for infographic generation. Key elements:
-- Extracts 3-5 key concepts with visual metaphors
-- Generates detailed infographic prompts for AI image generation
-- Specifies visual style (color scheme, layout, mood)
-- Focuses on educational clarity and visual-friendly formatting
+The fal.ai workflows should return an object with:
+- `infographic_url` or `image_url` or `output_url` - URL to the generated infographic
+- Study guide data fields matching the StudyGuide interface:
+  - `title` - Title of the content
+  - `summary` - Brief summary
+  - `sections[]` - Array of sections with:
+    - `header` - Section title
+    - `bullet_points[]` - Key points
+    - `visual_suggestions[]` - Visual elements
+    - `reminder_tips[]` - Memory aids
+
+The service includes fallback field mappings to handle variations in workflow output structure.

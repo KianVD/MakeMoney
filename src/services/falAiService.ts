@@ -1,73 +1,10 @@
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { StudyGuide } from '../types/studyGuide';
 
 // Configure fal.ai client
 fal.config({
   credentials: import.meta.env.VITE_FAL_AI_KEY,
 });
-
-const INFOGRAPHIC_SYSTEM_PROMPT = `You are an AI assistant that converts educational content into structured JSON for infographic generation.
-
-TASK: Extract the main ideas from the provided content and format them for visual infographic creation.
-
-OUTPUT FORMAT (JSON only, no markdown):
-{
-  "title": "Clear, concise title for the infographic",
-  "main_theme": "Central theme or topic in 2-3 words",
-  "key_concepts": [
-    {
-      "concept": "Main idea or concept name",
-      "description": "Brief 1-2 sentence explanation",
-      "visual_metaphor": "Visual element that represents this concept",
-      "importance": "high/medium/low"
-    }
-  ],
-  "visual_style": {
-    "color_scheme": "Suggested color palette (e.g., 'blue and green for trust', 'warm oranges for energy')",
-    "layout": "Suggested layout type (e.g., 'circular flow', 'hierarchical tree', 'timeline', 'mind map')",
-    "icons_needed": ["list", "of", "relevant", "icons"],
-    "mood": "professional/playful/academic/modern"
-  },
-  "infographic_prompt": "A detailed prompt for image generation that describes the complete infographic with all elements positioned and styled",
-  "sections": [
-    {
-      "section_title": "Section name",
-      "content_points": ["Point 1", "Point 2"],
-      "visual_weight": "Percentage of infographic space (e.g., '25%')"
-    }
-  ]
-}
-
-RULES:
-1. Extract only the most important 3-5 key concepts
-2. Keep descriptions concise and visual-friendly
-3. The infographic_prompt should be detailed enough for an AI image generator
-4. Ensure all content is factual and educational
-5. Visual metaphors should be simple and universally understood
-6. Return ONLY valid JSON, no additional text`;
-
-interface ContentExtractionResponse {
-  title: string;
-  main_theme: string;
-  key_concepts: Array<{
-    concept: string;
-    description: string;
-    visual_metaphor: string;
-    importance: string;
-  }>;
-  visual_style: {
-    color_scheme: string;
-    layout: string;
-    icons_needed: string[];
-    mood: string;
-  };
-  infographic_prompt: string;
-  sections: Array<{
-    section_title: string;
-    content_points: string[];
-    visual_weight: string;
-  }>;
-}
 
 // Helper function to upload image to fal.ai storage
 async function uploadImageToFal(file: File): Promise<string> {
@@ -80,7 +17,8 @@ async function uploadImageToFal(file: File): Promise<string> {
   }
 }
 
-export async function processContentWithLLM(content: string | File): Promise<ContentExtractionResponse> {
+// Process text using the text workflow
+async function processTextWorkflow(text: string): Promise<any> {
   const apiKey = import.meta.env.VITE_FAL_AI_KEY;
 
   if (!apiKey) {
@@ -88,129 +26,119 @@ export async function processContentWithLLM(content: string | File): Promise<Con
   }
 
   try {
-    let prompt: string;
-    let imageUrl: string | undefined;
+    console.log('Starting text workflow...');
 
-    // Handle both text and image inputs
-    if (typeof content === 'string') {
-      prompt = `${INFOGRAPHIC_SYSTEM_PROMPT}\n\nUser content to process:\n${content}`;
-    } else {
-      // It's a File (image) - upload to fal.ai storage first
-      console.log('Uploading image to fal.ai storage...');
-      imageUrl = await uploadImageToFal(content);
-      console.log('Image uploaded:', imageUrl);
-      prompt = `${INFOGRAPHIC_SYSTEM_PROMPT}\n\nAnalyze the image provided and extract the educational content from it.`;
-    }
-
-    // Use fal.ai's vision-capable LLM to process the content
-    const modelInput: any = {
-      model: "meta-llama/llama-3.2-90b-vision-instruct",
-      prompt: prompt,
-      max_tokens: 2000,
-      temperature: 0.7,
-    };
-
-    // Add image_url only if we have an image
-    if (imageUrl) {
-      modelInput.image_url = imageUrl;
-    }
-
-    const result = await fal.subscribe("fal-ai/any-llm", {
-      input: modelInput,
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS") {
-          console.log('Processing content with LLM...', update.logs);
-        }
-      },
-    });
-
-    const responseText = result.output;
-
-    if (!responseText) {
-      throw new Error('No response text from fal.ai LLM');
-    }
-
-    // Clean the response text - remove markdown code blocks if present
-    let cleanedText = responseText.trim();
-    if (cleanedText.startsWith('```json')) {
-      cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-
-    return JSON.parse(cleanedText);
-  } catch (error) {
-    console.error('fal.ai LLM processing error:', error);
-    throw new Error('Failed to process content with LLM: ' + (error instanceof Error ? error.message : 'Unknown error'));
-  }
-}
-
-export async function generateInfographic(prompt: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_FAL_AI_KEY;
-
-  if (!apiKey) {
-    throw new Error('fal.ai API key is not configured. Please set VITE_FAL_AI_KEY in your .env file.');
-  }
-
-  try {
-    const result = await fal.subscribe("fal-ai/nano-bana-pro", {
+    const stream = await fal.stream("workflows/DarenShamoun/text-mm", {
       input: {
-        prompt: prompt,
-        image_size: "landscape_16_9",
-        num_images: 1,
-        enable_safety_checker: true,
-        seed: Math.floor(Math.random() * 1000000)
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS") {
-          console.log('Generating infographic...', update.logs);
-        }
-      },
+        text_field: text
+      }
     });
 
-    // Return the image URL
-    if (result.images && result.images.length > 0) {
-      return result.images[0].url;
-    } else {
-      throw new Error('No images generated by fal.ai');
+    // Log events as they come in
+    for await (const event of stream) {
+      console.log('Text workflow event:', event);
     }
+
+    // Get the final result
+    const result = await stream.done();
+    console.log('Text workflow complete:', result);
+
+    return result;
   } catch (error) {
-    console.error('Fal.ai generation error:', error);
-    throw new Error('Failed to generate infographic: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    console.error('Text workflow error:', error);
+    throw new Error('Failed to process text workflow: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 }
 
+// Process image using the image workflow
+async function processImageWorkflow(imageUrl: string): Promise<any> {
+  const apiKey = import.meta.env.VITE_FAL_AI_KEY;
+
+  if (!apiKey) {
+    throw new Error('fal.ai API key is not configured. Please set VITE_FAL_AI_KEY in your .env file.');
+  }
+
+  try {
+    console.log('Starting image workflow with URL:', imageUrl);
+
+    const stream = await fal.stream("workflows/DarenShamoun/teammm", {
+      input: {
+        image_url_field: imageUrl
+      }
+    });
+
+    // Log events as they come in
+    for await (const event of stream) {
+      console.log('Image workflow event:', event);
+    }
+
+    // Get the final result
+    const result = await stream.done();
+    console.log('Image workflow complete:', result);
+
+    return result;
+  } catch (error) {
+    console.error('Image workflow error:', error);
+    throw new Error('Failed to process image workflow: ' + (error instanceof Error ? error.message : 'Unknown error'));
+  }
+}
+
+// Main function to create infographic from text or image
 export async function createInfographic(content: string | File): Promise<{
   studyGuide: StudyGuide;
   infographicUrl: string;
 }> {
-  // Step 1: Process with fal.ai LLM (handles both text and images)
-  const structuredData = await processContentWithLLM(content);
+  let workflowResult: any;
 
-  // Step 2: Generate the infographic with fal.ai
-  const infographicUrl = await generateInfographic(structuredData.infographic_prompt);
+  // Route to the correct workflow based on content type
+  if (typeof content === 'string') {
+    // Text workflow
+    workflowResult = await processTextWorkflow(content);
+  } else {
+    // Image workflow - upload image first, then process
+    console.log('Uploading image to fal.ai storage...');
+    const imageUrl = await uploadImageToFal(content);
+    console.log('Image uploaded:', imageUrl);
 
-  // Step 3: Convert to your existing study guide format
+    workflowResult = await processImageWorkflow(imageUrl);
+  }
+
+  // Extract the infographic URL from workflow result
+  // Workflow returns: { output: { images: [{ url: "..." }] } }
+  const infographicUrl = workflowResult.output?.images?.[0]?.url;
+
+  if (!infographicUrl) {
+    console.error('Workflow result:', workflowResult);
+    throw new Error('No infographic URL returned from workflow');
+  }
+
+  console.log('Infographic generated:', infographicUrl);
+
+  // Since the workflow only returns an image, create a simple study guide
+  // to display alongside the infographic
   const studyGuide: StudyGuide = {
-    title: structuredData.title,
-    summary: `Infographic about ${structuredData.main_theme}`,
+    title: typeof content === 'string'
+      ? (content.substring(0, 50) + (content.length > 50 ? '...' : ''))
+      : 'Visual Study Guide',
+    summary: 'AI-generated infographic from your content',
     student_benefit_focus: "Making academic life smoother through simplified study tools, reminders, and tutoring-style explanations.",
-    sections: structuredData.sections.map(section => ({
-      header: section.section_title,
-      bullet_points: section.content_points,
-      visual_suggestions: [
-        ...structuredData.key_concepts
-          .filter(c => c.importance === 'high')
-          .map(c => c.visual_metaphor),
-        `Layout: ${structuredData.visual_style.layout}`,
-        `Color scheme: ${structuredData.visual_style.color_scheme}`
+    sections: [{
+      header: 'Study Guide',
+      bullet_points: [
+        'View the infographic above for a visual summary',
+        'Download the image for offline study',
+        'Use this as a quick reference guide'
       ],
-      reminder_tips: structuredData.key_concepts
-        .map(c => `Remember: ${c.concept} - ${c.description}`)
-    })),
-    infographic_style: `${structuredData.visual_style.mood}, ${structuredData.visual_style.layout}`
+      visual_suggestions: [
+        'Infographic designed for easy comprehension',
+        'Visual elements highlight key concepts'
+      ],
+      reminder_tips: [
+        'Review the infographic regularly',
+        'Share with study groups'
+      ]
+    }],
+    infographic_style: "AI-generated visual study guide"
   };
 
   return {
